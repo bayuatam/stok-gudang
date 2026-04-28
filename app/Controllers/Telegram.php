@@ -32,7 +32,6 @@ class Telegram extends BaseController
                 $text       = $update['callback_query']['data'];
                 $username   = $update['callback_query']['from']['username'] ?? 'User';
 
-                // Hilangkan icon loading di tombol
                 $this->sendApiRequest('answerCallbackQuery', ['callback_query_id' => $update['callback_query']['id']]);
             } elseif (isset($update['message'])) {
                 $chat_id  = $update['message']['chat']['id'];
@@ -43,13 +42,21 @@ class Telegram extends BaseController
             if (!$chat_id) return;
 
             /* =======================================================
-               SISTEM KEAMANAN (WHITELIST)
+               🚨 SISTEM KEAMANAN (DIMATIKAN SEMENTARA UNTUK DEV)
             ======================================================= */
-            $allowed_users = ['6069266941'];
-            if (!in_array($chat_id, $allowed_users)) {
-                $this->kirimPesan($chat_id, "⛔ <b>AKSES DITOLAK</b>\nMaaf @$username, Anda tidak terdaftar sebagai pegawai PT WIKA Beton.");
+            /* $db = \Config\Database::connect();
+            $pegawai = $db->table('users')->where('telegram_id', $chat_id)->get()->getRowArray();
+
+            if (!$pegawai) {
+                $pesan_tolak  = "⛔ <b>AKSES DITOLAK</b>\n";
+                $pesan_tolak .= "Maaf @$username, Anda tidak terdaftar di sistem PT WIKA Beton.\n\n";
+                $pesan_tolak .= "Berikan ID Telegram ini kepada Admin IT untuk didaftarkan:\n";
+                $pesan_tolak .= "👉 <code>$chat_id</code> 👈";
+                
+                $this->kirimPesan($chat_id, $pesan_tolak);
                 return;
             }
+            */
 
             $barangModel    = new BarangModel();
             $transaksiModel = new TransaksiModel();
@@ -68,6 +75,7 @@ class Telegram extends BaseController
                 $habis = $barangModel->where('stok', 0)->countAllResults();
 
                 $pesan  = "🏭 <b>PT WIKA BETON TBK</b>\n━━━━━━━━━━━━━━━━━━\n";
+                // Menggunakan username Telegram karena bebas akses
                 $pesan .= "Halo, <b>@$username</b>! 👋\n";
                 $pesan .= "Selamat datang di <b>Warehouse Monitoring System</b>.\n\n";
 
@@ -235,7 +243,6 @@ class Telegram extends BaseController
                     $pesan .= "└ Gudang : {$b['lokasi_gudang']}\n\n";
                 }
 
-                // Karena ini dipicu text manual (bukan tombol), kita pakai kirimPesan
                 $this->kirimPesan($chat_id, $pesan, $this->menuKembali());
             }
 
@@ -248,7 +255,7 @@ class Telegram extends BaseController
                 $pesan .= "✅ Paginasi Data\n";
                 $pesan .= "✅ Anti-Spam Message\n";
                 $pesan .= "✅ Caching HTTP Request\n";
-                $pesan .= "🔒 Dilindungi sistem Whitelist";
+                $pesan .= "🔓 Mode Pengembangan (Terbuka)";
 
                 $this->kirimAtauEdit($chat_id, $message_id, $pesan, $this->menuKembali(), $is_callback);
             }
@@ -262,11 +269,26 @@ class Telegram extends BaseController
        FUNGSI HELPER & API REQUEST
     ======================================================= */
 
-    // Menyatukan Logika Send & Edit agar chat Telegram tidak spam
+    public static function kirimNotifSistem($pesanPeringatan)
+    {
+        $telegram = new self();
+
+        // Ganti dengan ID grup atau orang yang ingin menerima notif otomatis
+        $admin_ids = ['6069266941'];
+
+        foreach ($admin_ids as $admin_id) {
+            $pesan = "🚨 <b>SYSTEM ALERT</b> 🚨\n━━━━━━━━━━━━━━━━━━\n\n" . $pesanPeringatan;
+            $telegram->sendApiRequest('sendMessage', [
+                'chat_id' => $admin_id,
+                'text' => $pesan,
+                'parse_mode' => 'HTML'
+            ]);
+        }
+    }
+
     private function kirimAtauEdit($chat_id, $message_id, $text, $keyboard, $is_callback)
     {
         if ($is_callback && $message_id) {
-            // Edit pesan yang sudah ada
             $this->sendApiRequest('editMessageText', [
                 'chat_id' => $chat_id,
                 'message_id' => $message_id,
@@ -275,7 +297,6 @@ class Telegram extends BaseController
                 'reply_markup' => json_encode($keyboard)
             ]);
         } else {
-            // Kirim pesan baru
             $this->kirimPesan($chat_id, $text, $keyboard);
         }
     }
@@ -290,7 +311,6 @@ class Telegram extends BaseController
 
     private function sendApiRequest($method, $data)
     {
-        // Menggunakan CURL bawaan CI4
         $client = \Config\Services::curlrequest();
         try {
             $client->post($this->apiUrl . $this->token . '/' . $method, [
@@ -303,7 +323,6 @@ class Telegram extends BaseController
         }
     }
 
-    // Mengembalikan Menu Lengkap
     private function menuUtama()
     {
         return [
