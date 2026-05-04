@@ -9,11 +9,10 @@ class Barang extends BaseController
     public function index()
     {
         $model = new BarangModel();
-
         $keyword = $this->request->getGet('keyword');
 
         if ($keyword) {
-            $barang = $model->like('nama_barang', $keyword)->findAll();
+            $barang = $model->like('nama_material', $keyword)->findAll();
         } else {
             $barang = $model->findAll();
         }
@@ -30,22 +29,26 @@ class Barang extends BaseController
 
     public function simpan()
     {
-        $model = new \App\Models\BarangModel();
+        $model = new BarangModel();
 
-        // cek kode barang sudah ada atau belum
-        $cek = $model->where('kode_barang', $this->request->getPost('kode_barang'))->first();
+        $cek = $model->where('kode_sumber_daya', $this->request->getPost('kode_sumber_daya'))->first();
 
         if ($cek) {
-            return redirect()->back()->withInput()->with('error', 'Kode barang sudah digunakan!');
+            return redirect()->back()->withInput()->with('error', 'Kode sudah digunakan!');
         }
 
         $model->save([
-            'kode_barang'   => $this->request->getPost('kode_barang'),
-            'nama_barang'   => $this->request->getPost('nama_barang'),
-            'kategori'      => $this->request->getPost('kategori'),
-            'satuan'        => $this->request->getPost('satuan'),
-            'stok'          => $this->request->getPost('stok'),
-            'minimum_stok'  => $this->request->getPost('minimum_stok'),
+            'kode_sumber_daya' => $this->request->getPost('kode_sumber_daya'),
+            'nama_material'    => $this->request->getPost('nama_material'),
+            'jenis_material'   => $this->request->getPost('jenis_material'),
+            'kategori'         => $this->request->getPost('kategori'),
+            'supplier'         => $this->request->getPost('supplier'),
+            'no_part'          => $this->request->getPost('no_part'),
+            'satuan'           => $this->request->getPost('satuan'),
+            'stok'             => $this->request->getPost('stok'),
+            'minimum_stok'     => $this->request->getPost('minimum_stok'),
+            'lokasi_gudang'    => $this->request->getPost('lokasi_gudang'),
+            'status_barang'    => $this->request->getPost('status_barang'),
         ]);
 
         return redirect()->to('/barang')->with('success', 'Barang berhasil ditambahkan');
@@ -65,15 +68,20 @@ class Barang extends BaseController
         $model = new BarangModel();
 
         $model->update($id, [
-            'kode_barang' => $this->request->getPost('kode_barang'),
-            'nama_barang' => $this->request->getPost('nama_barang'),
-            'kategori' => $this->request->getPost('kategori'),
-            'satuan' => $this->request->getPost('satuan'),
-            'stok' => $this->request->getPost('stok'),
-            'minimum_stok' => $this->request->getPost('minimum_stok'),
+            'kode_sumber_daya' => $this->request->getPost('kode_sumber_daya'),
+            'nama_material'    => $this->request->getPost('nama_material'),
+            'jenis_material'   => $this->request->getPost('jenis_material'),
+            'kategori'         => $this->request->getPost('kategori'),
+            'supplier'         => $this->request->getPost('supplier'),
+            'no_part'          => $this->request->getPost('no_part'),
+            'satuan'           => $this->request->getPost('satuan'),
+            'stok'             => $this->request->getPost('stok'),
+            'minimum_stok'     => $this->request->getPost('minimum_stok'),
+            'lokasi_gudang'    => $this->request->getPost('lokasi_gudang'),
+            'status_barang'    => $this->request->getPost('status_barang'),
         ]);
 
-        return redirect()->to('/barang');
+        return redirect()->to('/barang')->with('success', 'Barang berhasil diupdate');
     }
 
     public function hapus($id)
@@ -81,6 +89,6 @@ class Barang extends BaseController
         $model = new BarangModel();
         $model->delete($id);
 
-        return redirect()->to('/barang');
+        return redirect()->to('/barang')->with('success', 'Barang berhasil dihapus');
     }
 }

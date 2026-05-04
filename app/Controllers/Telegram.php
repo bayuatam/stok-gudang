@@ -2,397 +2,542 @@
 
 namespace App\Controllers;
 
-use App\Models\BarangModel;
-use App\Models\TransaksiModel;
+use App\Controllers\BaseController;
+use App\Libraries\PdfService;
 
 class Telegram extends BaseController
 {
-    private $token = '8664592787:AAHxTnEZyozCWVWaM_lBXLBDNkH9BCIJwto';
-    private $apiUrl = 'https://api.telegram.org/bot';
+    protected $token;
+    protected $api;
+    protected $allowed;
 
+    public function __construct()
+    {
+        $this->token   = env('telegram.token');
+        $this->api     = "https://api.telegram.org/bot{$this->token}/";
+        $this->allowed = env('telegram.chat_id');
+        date_default_timezone_set('Asia/Jakarta');
+    }
+
+    /* =====================================================
+       WEBHOOK MAIN V13 FULL CLEAN FINAL
+    ===================================================== */
     public function webhook()
     {
         try {
-            $update = json_decode(file_get_contents("php://input"), true);
 
-            if (!$update) {
-                return;
-            }
+            $update = json_decode(file_get_contents('php://input'), true);
+            if (!$update) return;
 
-            $chat_id = null;
-            $text = '';
-            $username = '';
+            $chat_id    = null;
             $message_id = null;
-            $is_callback = false;
+            $text       = '';
+            $callback   = false;
+            $cb_id      = null;
+            $nama       = 'User';
 
-            /* =======================================================
-               1. TANGKAP INPUT (TERMASUK FORCE REPLY)
-            ======================================================= */
+            /* CALLBACK */
             if (isset($update['callback_query'])) {
-                $is_callback = true;
+
+                $callback   = true;
+                $cb_id      = $update['callback_query']['id'];
                 $chat_id    = $update['callback_query']['message']['chat']['id'];
                 $message_id = $update['callback_query']['message']['message_id'];
                 $text       = $update['callback_query']['data'];
-                $username   = $update['callback_query']['from']['username'] ?? 'User';
+                $nama       = $update['callback_query']['from']['first_name'] ?? 'User';
 
-                $this->sendApiRequest('answerCallbackQuery', [
-                    'callback_query_id' => $update['callback_query']['id']
-                ]);
-            } elseif (isset($update['message'])) {
-                $chat_id  = $update['message']['chat']['id'];
-                $text     = trim($update['message']['text'] ?? '');
-                $username = $update['message']['from']['username'] ?? 'User';
+                $this->answerCallback($cb_id);
+            }
 
-                // TANGKAP BALASAN PENCARIAN (FORCE REPLY)
-                if (isset($update['message']['reply_to_message'])) {
-                    $reply_text = $update['message']['reply_to_message']['text'] ?? '';
-                    if (strpos($reply_text, 'Ketik nama material') !== false) {
-                        $text = '/stok ' . $text;
-                    }
-                }
+            /* MESSAGE */ elseif (isset($update['message'])) {
+
+                $chat_id    = $update['message']['chat']['id'];
+                $message_id = $update['message']['message_id'];
+                $text       = trim($update['message']['text'] ?? '');
+                $nama       = $update['message']['from']['first_name'] ?? 'User';
             }
 
             if (!$chat_id) return;
 
-            $barangModel    = new BarangModel();
-            $transaksiModel = new TransaksiModel();
-
-            /* =======================================================
-               2. MENU UTAMA (START) DENGAN PROGRESS BAR ASCII
-            ======================================================= */
-            if ($text == '/start' || $text == '🏠 Menu') {
-
-                if ($is_callback && $message_id) {
-                    $this->sendApiRequest('deleteMessage', ['chat_id' => $chat_id, 'message_id' => $message_id]);
-                }
-
-                $total  = $barangModel->countAllResults();
-                $habis  = $barangModel->where('stok', 0)->countAllResults();
-                $kritis = $barangModel->where('stok <= minimum_stok')->where('stok >', 0)->countAllResults();
-                $aman   = $total - $kritis - $habis;
-
-                $barAman   = $this->generateProgressBar($aman, $total);
-                $barKritis = $this->generateProgressBar($kritis, $total);
-                $barHabis  = $this->generateProgressBar($habis, $total);
-
-                $pesan  = "🏭 <b>PT WIKA BETON TBK</b>\n";
-                $pesan .= "━━━━━━━━━━━━━━━━━━\n";
-                $pesan .= "Halo, <b>@$username</b>! 👋\n";
-                $pesan .= "Selamat datang di <b>Warehouse Monitoring System</b>.\n\n";
-
-                $pesan .= "📊 <b>SUMMARY INVENTORY</b>\n";
-                $pesan .= "<code>Total Material : $total Item</code>\n\n";
-                $pesan .= "🟢 <b>Stok Aman ($aman)</b>\n<code>$barAman</code>\n";
-                $pesan .= "🟡 <b>Stok Kritis ($kritis)</b>\n<code>$barKritis</code>\n";
-                $pesan .= "🔴 <b>Stok Habis ($habis)</b>\n<code>$barHabis</code>\n\n";
-                $pesan .= "Pilih menu operasional di bawah ini 👇";
-
-                $this->kirimPesan($chat_id, $pesan, $this->menuUtama());
+            /* SECURITY */
+            if ($this->allowed && $chat_id != $this->allowed) {
+                $this->sendMessage($chat_id, "⛔ Akses ditolak.");
                 return;
             }
 
-            /* =======================================================
-               3. FITUR BARU: PROFIL SAYA (USER INFO DARI DATABASE)
-            ======================================================= */ elseif ($text == '👤 Profil Saya') {
+            /* =====================================================
+               AUTO SEARCH SMART TYPO AI
+            ===================================================== */
 
-                // Koneksi ke Database untuk mencari data User/Manajer
-                $db = \Config\Database::connect();
-                $userDb = $db->table('users')->where('telegram_id', $chat_id)->get()->getRowArray();
+            if (!$callback && $text && $text[0] !== '/') {
 
-                // Set data jika ketemu, jika tidak berikan status default
-                $namaLengkap = $userDb ? strtoupper($userDb['nama']) : strtoupper($username);
-                $roleAsli    = $userDb ? strtoupper($userDb['role']) : 'GUEST / BELUM TERDAFTAR';
-                $waktu       = date('d F Y \p\u\k\u\l H:i:s \W\I\B');
-
-                $pesan  = "Halo <b>$namaLengkap</b> 👋\n";
-                $pesan .= "$waktu\n\n";
-
-                $pesan .= "<b>User Info :</b>\n";
-                $pesan .= "└ ID Telegram : <code>$chat_id</code>\n";
-                $pesan .= "└ Username : @$username\n";
-                $pesan .= "└ Jabatan : <b>$roleAsli</b>\n\n";
-
-                $pesan .= "<b>System Stats :</b>\n";
-                $pesan .= "└ Status Bot : 🟢 Aktif (Online)\n";
-                $pesan .= "└ Mode Keamanan : Development (Open Access)\n\n";
-
-                $pesan .= "<i>Sistem Monitoring WIKA Beton Enterprise.</i>";
-
-                $this->kirimAtauEdit($chat_id, $message_id, $pesan, $this->menuKembali(), $is_callback);
-                return;
-            }
-
-            /* =======================================================
-               4. CEK STOK (PAGINASI NEXT & PREV)
-            ======================================================= */ elseif (strpos($text, 'cekstok_') === 0) {
-
-                if ($is_callback && isset($update['callback_query']['message']['photo'])) {
-                    $this->sendApiRequest('deleteMessage', ['chat_id' => $chat_id, 'message_id' => $message_id]);
-                    $message_id = null;
-                }
-
-                $offset = (int) str_replace('cekstok_', '', $text);
-                $limit  = 8;
-
-                $totalData = $barangModel->countAllResults();
-                $barang = $barangModel->orderBy('nama_material', 'ASC')->findAll($limit, $offset);
-
-                $halaman_sekarang = ($offset / $limit) + 1;
-                $pesan  = "📦 <b>DATA MATERIAL (Hal. $halaman_sekarang)</b>\n";
-                $pesan .= "━━━━━━━━━━━━━━━━━━\n\n";
-
-                foreach ($barang as $b) {
-                    $icon = ($b['stok'] == 0) ? '❌' : (($b['stok'] <= $b['minimum_stok']) ? '⚠' : '✅');
-                    $pesan .= "$icon <b>{$b['nama_material']}</b>\n";
-                    $pesan .= "└ Stok: <b>{$b['stok']} {$b['satuan']}</b> | Gd: {$b['lokasi_gudang']}\n\n";
-                }
-
-                $nav = [];
-                if ($offset > 0) $nav[] = ['text' => '⬅️ Prev', 'callback_data' => 'cekstok_' . ($offset - $limit)];
-                if (($offset + $limit) < $totalData) $nav[] = ['text' => 'Next ➡️', 'callback_data' => 'cekstok_' . ($offset + $limit)];
-
-                $keyboardPaginasi = ['inline_keyboard' => [$nav, [['text' => '🏠 Kembali ke Menu', 'callback_data' => '🏠 Menu']]]];
-
-                $this->kirimAtauEdit($chat_id, $message_id, $pesan, $keyboardPaginasi, $is_callback);
-                return;
-            }
-
-            /* =======================================================
-               5. DASHBOARD (API QUICKCHART DONUT)
-            ======================================================= */ elseif ($text == '📊 Dashboard') {
-
-                $total  = $barangModel->countAllResults();
-                $habis  = $barangModel->where('stok', 0)->countAllResults();
-                $kritis = $barangModel->where('stok <= minimum_stok')->where('stok >', 0)->countAllResults();
-                $aman   = $total - $kritis - $habis;
-
-                $chartConfig = [
-                    'type' => 'doughnut',
-                    'data' => [
-                        'labels' => ['Aman', 'Kritis', 'Habis'],
-                        'datasets' => [['data' => [$aman, $kritis, $habis], 'backgroundColor' => ['#10b981', '#f59e0b', '#ef4444'], 'borderWidth' => 2]]
-                    ],
-                    'options' => [
-                        'plugins' => ['legend' => ['position' => 'bottom'], 'datalabels' => ['color' => '#fff', 'font' => ['weight' => 'bold', 'size' => 16]]]
-                    ]
+                $reserved = [
+                    'home',
+                    'ringkasan',
+                    'panduan',
+                    'export',
+                    'pdf_stok',
+                    'pdf_harian',
+                    'pdf_mingguan',
+                    'pdf_bulanan',
+                    'stok_kritis_1'
                 ];
 
-                $chartUrl = 'https://quickchart.io/chart?w=500&h=300&c=' . urlencode(json_encode($chartConfig));
-
-                $pesan  = "📊 <b>DASHBOARD VISUAL REALTIME</b>\n━━━━━━━━━━━━━━━━━━\n\n";
-                $pesan .= "🟢 Aman   : $aman Material\n";
-                $pesan .= "🟡 Kritis : $kritis Material\n";
-                $pesan .= "🔴 Habis  : $habis Material\n\n";
-                $pesan .= "🕒 Update: " . date('d-m-Y H:i:s');
-
-                if ($is_callback && $message_id) {
-                    $this->sendApiRequest('deleteMessage', ['chat_id' => $chat_id, 'message_id' => $message_id]);
-                }
-
-                $this->kirimFoto($chat_id, $chartUrl, $pesan, $this->menuKembali());
-                return;
-            }
-
-            /* =======================================================
-               6. PENCARIAN INTERAKTIF (FORCE REPLY)
-            ======================================================= */ elseif ($text == '🔎 Cari') {
-
-                if ($is_callback && $message_id) {
-                    $this->sendApiRequest('deleteMessage', ['chat_id' => $chat_id, 'message_id' => $message_id]);
-                }
-
-                $pesan  = "🔎 <b>PENCARIAN MATERIAL</b>\n";
-                $pesan .= "━━━━━━━━━━━━━━━━━━\n\n";
-                $pesan .= "Ketik nama material yang ingin dicari pada kolom di bawah ini 👇";
-
-                $keyboardForce = [
-                    'force_reply' => true,
-                    'input_field_placeholder' => 'Misal: semen, pc, agregat...'
-                ];
-
-                $this->kirimPesan($chat_id, $pesan, $keyboardForce);
-                return;
-            }
-
-            /* =======================================================
-               7. EKSEKUSI PENCARIAN MATERIAL
-            ======================================================= */ elseif (strpos(strtolower($text), '/stok ') === 0) {
-
-                $keyword = trim(str_replace('/stok', '', strtolower($text)));
-
-                $res = $barangModel->groupStart()
-                    ->like('nama_material', $keyword)
-                    ->orLike('kode_sumber_daya', $keyword)
-                    ->groupEnd()->findAll(15);
-
-                if (!$res) {
-                    $this->kirimPesan($chat_id, "❌ Material '<b>$keyword</b>' tidak ditemukan.", $this->menuKembali());
+                if (!in_array($text, $reserved)) {
+                    $this->cariBarang($chat_id, $text);
                     return;
                 }
+            }
 
-                $pesan = "🔎 <b>HASIL PENCARIAN: \"$keyword\"</b>\n━━━━━━━━━━━━━━━━━━\n\n";
-                foreach ($res as $b) {
-                    $status_icon = ($b['stok'] <= $b['minimum_stok']) ? '⚠' : '✅';
-                    if ($b['stok'] == 0) $status_icon = '❌';
-
-                    $pesan .= "$status_icon <b>" . strtoupper($b['nama_material']) . "</b>\n";
-                    $pesan .= "├ Stok : <b>{$b['stok']} {$b['satuan']}</b>\n";
-                    $pesan .= "└ Gudang : {$b['lokasi_gudang']}\n\n";
-                }
-
-                $this->kirimPesan($chat_id, $pesan, $this->menuKembali());
+            /* SEARCH COMMAND */
+            if (strpos($text, '/cari ') === 0) {
+                $this->cariBarang($chat_id, trim(substr($text, 6)));
                 return;
             }
 
-            /* =======================================================
-               8. MATERIAL KRITIS & TRANSAKSI
-            ======================================================= */ elseif ($text == '⚠ Kritis') {
-                if ($is_callback && isset($update['callback_query']['message']['photo'])) {
-                    $this->sendApiRequest('deleteMessage', ['chat_id' => $chat_id, 'message_id' => $message_id]);
-                    $message_id = null;
-                }
+            /* PAGINATION */
+            if (strpos($text, 'stok_kritis') === 0) {
+                $parts = explode('_', $text);
+                $page  = isset($parts[2]) ? (int)$parts[2] : 1;
+                $this->stokKritis($chat_id, $message_id, $callback, $page);
+                return;
+            }
 
-                $barang = $barangModel->where('stok <= minimum_stok')->findAll(15);
-                if (!$barang) {
-                    $this->kirimAtauEdit($chat_id, $message_id, "✅ Semua material aman.", $this->menuKembali(), $is_callback);
+            /* =====================================================
+               ROUTER FINAL
+            ===================================================== */
+
+            switch ($text) {
+
+                case '/start':
+                case 'home':
+                    $this->menuUtama($chat_id, $message_id, $callback, $nama);
                     return;
-                }
 
-                $pesan = "🚨 <b>MATERIAL KRITIS</b>\n━━━━━━━━━━━━━━━━━━\n\n";
-                foreach ($barang as $b) {
-                    $icon = ($b['stok'] == 0) ? '❌' : '⚠';
-                    $pesan .= "$icon <b>{$b['nama_material']}</b>\n├ Stok : <b>{$b['stok']}</b>\n└ Min  : {$b['minimum_stok']}\n\n";
-                }
-                $this->kirimAtauEdit($chat_id, $message_id, $pesan, $this->menuKembali(), $is_callback);
-                return;
-            } elseif (in_array($text, ['📥 Masuk', '📤 Keluar', '📄 Histori'])) {
-                if ($is_callback && isset($update['callback_query']['message']['photo'])) {
-                    $this->sendApiRequest('deleteMessage', ['chat_id' => $chat_id, 'message_id' => $message_id]);
-                    $message_id = null;
-                }
+                case 'ringkasan':
+                    $this->ringkasan($chat_id, $message_id, $callback);
+                    return;
 
-                $jenis = ($text == '📥 Masuk') ? 'masuk' : (($text == '📤 Keluar') ? 'keluar' : null);
-                $judul = ($jenis == 'masuk') ? "📥 TRANSAKSI MASUK" : (($jenis == 'keluar') ? "📤 TRANSAKSI KELUAR" : "📄 HISTORI TERBARU");
+                case 'panduan_cari':
+                    $this->panduanCari($chat_id, $message_id, $callback);
+                    return;
 
-                $data = $jenis ? $transaksiModel->where('jenis', $jenis)->orderBy('id', 'DESC')->findAll(10) : $transaksiModel->orderBy('id', 'DESC')->findAll(10);
+                case 'export':
+                    $this->menuExport($chat_id, $message_id, $callback);
+                    return;
 
-                $pesan = "<b>$judul</b>\n━━━━━━━━━━━━━━━━━━\n\n";
-                if (!$data) {
-                    $pesan .= "Belum ada transaksi.";
-                } else {
-                    foreach ($data as $d) {
-                        $b = $barangModel->find($d['barang_id']);
-                        $simbol = ($d['jenis'] == 'masuk') ? '🟢 +' : '🔴 -';
-                        $pesan .= "▪️ <b>{$b['nama_material']}</b>\n└ $simbol {$d['jumlah']} | " . date('d/m/Y', strtotime($d['tanggal'])) . "\n\n";
-                    }
-                }
-                $this->kirimAtauEdit($chat_id, $message_id, $pesan, $this->menuKembali(), $is_callback);
-                return;
-            } elseif ($text == '🏢 Tentang') {
-                if ($is_callback && isset($update['callback_query']['message']['photo'])) {
-                    $this->sendApiRequest('deleteMessage', ['chat_id' => $chat_id, 'message_id' => $message_id]);
-                    $message_id = null;
-                }
+                case 'pdf_stok':
+                    $this->exportPdf($chat_id, 'stok');
+                    return;
 
-                $pesan  = "🏭 <b>PT WIKA BETON TBK</b>\n━━━━━━━━━━━━━━━━━━\n";
-                $pesan .= "<b>Warehouse Monitoring Bot V.Final (Enterprise)</b>\n\n";
-                $pesan .= "Visual Analytics, Pagination & DB Integrated.\n";
-                $pesan .= "Developed by Bayu Pratama.";
+                case 'pdf_harian':
+                    $this->exportPdf($chat_id, 'harian');
+                    return;
 
-                $this->kirimAtauEdit($chat_id, $message_id, $pesan, $this->menuKembali(), $is_callback);
-                return;
-            } elseif (strpos($text, '/') === 0) {
-                if ($text != '/start') $this->kirimPesan($chat_id, "Ketik /start untuk menampilkan menu.");
+                case 'pdf_mingguan':
+                    $this->exportPdf($chat_id, 'mingguan');
+                    return;
+
+                case 'pdf_bulanan':
+                    $this->exportPdf($chat_id, 'bulanan');
+                    return;
+
+                case 'panduan':
+                    $this->panduan($chat_id, $message_id, $callback);
+                    return;
             }
+
+            $this->sendMessage($chat_id, "Gunakan /start");
         } catch (\Throwable $e) {
-            log_message('error', 'Bot Error: ' . $e->getMessage());
+
+            log_message('error', $e->getMessage());
         }
     }
 
-
-    /* =======================================================
-       KUMPULAN FUNGSI HELPER
-    ======================================================= */
-
-    private function generateProgressBar($current, $total, $length = 12)
+    /* =====================================================
+       MENU UTAMA EXECUTIVE
+    ===================================================== */
+    private function menuUtama($chat_id, $message_id, $callback, $nama)
     {
-        if ($total == 0) return str_repeat('░', $length) . " 0%";
-        $percentage = round(($current / $total) * 100);
-        $filledLength = round(($length * $percentage) / 100);
-        $bar = str_repeat('█', $filledLength) . str_repeat('░', $length - $filledLength);
-        return "$bar $percentage%";
+        $db = db_connect();
+        $totalBarang = $db->table('barang')->countAll();
+        $stokKritis  = $db->table('barang')->where('stok <= minimum_stok')->countAllResults();
+        $today       = date('Y-m-d');
+        $trxHariIni  = $db->table('transaksi')->like('tanggal', $today, 'after')->countAllResults();
+
+        $jam = (int)date('H');
+        $salam = ($jam < 11) ? "Pagi" : (($jam < 15) ? "Siang" : (($jam < 18) ? "Sore" : "Malam"));
+
+        $text  = "🏢 <b>WIKA BETON - INVENTORY</b>\n";
+        $text .= "<code>Sistem Monitoring Material </code>\n";
+        $text .= "━━━━━━━━━━━━━━━━━━\n\n";
+        $text .= "Selamat {$salam}, <b>{$nama}</b>\n";
+        $text .= ($stokKritis == 0) ? "🟢 Status: <b>Semua Stok Aman</b>\n\n" : "🔴 Status: <b>{$stokKritis} Item Kritis!</b>\n\n";
+
+        $text .= "📊 <b>GUDANG</b>\n";
+        $text .= "├ 📦 Total Produk  : <b>{$totalBarang}</b>\n";
+        $text .= "├ ⚠️ Stok Menipis : <b>{$stokKritis}</b>\n";
+        $text .= "└ 📝 Aktivitas Hari Ini : <b>{$trxHariIni}</b>\n\n";
+        $text .= "📅 <i>Update: " . date('d M Y | H:i') . " WIB</i>\n\n";
+        $text .= "💡 <i>Gunakan tombol di bawah atau ketik nama barang untuk mencari cepat.</i>";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => '📈 Ringkasan Stat', 'callback_data' => 'ringkasan'], ['text' => '🔎 Cari Barang', 'callback_data' => 'panduan_cari']],
+                [['text' => '⚠️ Daftar Stok Kritis', 'callback_data' => 'stok_kritis_1']],
+                [['text' => '📄 Cetak Laporan PDF', 'callback_data' => 'export']],
+                [['text' => '⚙️ Panduan Sistem', 'callback_data' => 'panduan']]
+            ]
+        ];
+
+        $this->sendOrEdit($chat_id, $message_id, $text, $keyboard, $callback);
     }
 
-    private function kirimAtauEdit($chat_id, $message_id, $text, $keyboard, $is_callback)
+    /* =====================================================
+       RINGKASAN
+    ===================================================== */
+    private function ringkasan($chat_id, $message_id, $callback)
     {
-        if ($is_callback && $message_id) {
-            $this->sendApiRequest('editMessageText', [
-                'chat_id'      => $chat_id,
-                'message_id'   => $message_id,
-                'text'         => $text,
-                'parse_mode'   => 'HTML',
+        $db = db_connect();
+
+        $barang = $db->table('barang')->countAll();
+
+        $kritis = $db->table('barang')
+            ->where('stok <= minimum_stok')
+            ->countAllResults();
+
+        $today = date('Y-m-d');
+
+        $masuk = $db->table('transaksi')
+            ->where('jenis', 'masuk')
+            ->like('tanggal', $today, 'after')
+            ->countAllResults();
+
+        $keluar = $db->table('transaksi')
+            ->where('jenis', 'keluar')
+            ->like('tanggal', $today, 'after')
+            ->countAllResults();
+
+        $text  = "📊 <b>RINGKASAN HARI INI</b>\n\n";
+        $text .= "📦 Total Barang : {$barang}\n";
+        $text .= "⚠️ Stok Kritis : {$kritis}\n";
+        $text .= "📥 Barang Masuk : {$masuk}\n";
+        $text .= "📤 Barang Keluar : {$keluar}\n";
+        $text .= "🕒 " . date('d-m-Y H:i');
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => '🏠 Menu', 'callback_data' => 'home']]
+            ]
+        ];
+
+        $this->sendOrEdit($chat_id, $message_id, $text, $keyboard, $callback);
+    }
+
+    /* =====================================================
+       PANDUAN SEARCH
+    ===================================================== */
+    private function panduanCari($chat_id, $message_id, $callback)
+    {
+        $text  = "🔎 <b>CARI BARANG CEPAT</b>\n\n";
+        $text .= "Ketik nama barang langsung di chat.\n\n";
+        $text .= "Contoh:\n";
+        $text .= "<code>semen</code>\n";
+        $text .= "<code>wiremesh</code>\n";
+        $text .= "<code>besi</code>\n\n";
+        $text .= "Bot akan mencari otomatis.";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => '🏠 Menu', 'callback_data' => 'home']]
+            ]
+        ];
+
+        $this->sendOrEdit($chat_id, $message_id, $text, $keyboard, $callback);
+    }
+
+    /* =====================================================
+       ALERT
+    ===================================================== */
+    private function stokKritis($chat_id, $message_id, $callback, $page = 1)
+    {
+        $db = db_connect();
+
+        $rows = $db->table('barang')
+            ->where('stok <= minimum_stok')
+            ->orderBy('stok', 'ASC')
+            ->limit(15)
+            ->get()
+            ->getResultArray();
+
+        $text = "⚠️ <b>STOK KRITIS</b>\n\n";
+
+        if ($rows) {
+
+            foreach ($rows as $r) {
+                $text .= "📦 {$r['nama_material']}\n";
+                $text .= "Sisa {$r['stok']} {$r['satuan']}\n\n";
+            }
+        } else {
+
+            $text .= "✅ Semua stok aman.";
+        }
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => '🏠 Menu', 'callback_data' => 'home']]
+            ]
+        ];
+
+        $this->sendOrEdit($chat_id, $message_id, $text, $keyboard, $callback);
+    }
+
+    /* =====================================================
+       SEARCH SMART TYPO AI
+    ===================================================== */
+    private function cariBarang($chat_id, $keyword)
+    {
+        $db = db_connect();
+        $keyword = strtolower(trim($keyword));
+        $rows = $db->table('barang')->get()->getResultArray();
+        $hasil = [];
+
+        foreach ($rows as $r) {
+            $nama = strtolower($r['nama_material']);
+            $kat  = strtolower($r['kategori']);
+            similar_text($keyword, $nama, $s1);
+            similar_text($keyword, $kat, $s2);
+            $score = max($s1, $s2);
+
+            if (strpos($nama, $keyword) !== false || strpos($kat, $keyword) !== false || $score >= 45) {
+                $r['score'] = $score;
+                $hasil[] = $r;
+            }
+        }
+
+        usort($hasil, function ($a, $b) {
+            return $b['score'] <=> $a['score'];
+        });
+        $hasil = array_slice($hasil, 0, 8);
+
+        $text = "🔎 <b>HASIL PENCARIAN</b>\n";
+        $text .= "Kata Kunci: <i>'{$keyword}'</i>\n";
+        $text .= "━━━━━━━━━━━━━━━━━━\n\n";
+
+        if ($hasil) {
+            foreach ($hasil as $r) {
+                $isKritis = ($r['stok'] <= $r['minimum_stok']);
+                $icon = $isKritis ? '🔴' : '🟢';
+                $text .= "{$icon} <b>{$r['nama_material']}</b>\n";
+                $text .= "└ Stok: <b>{$r['stok']} {$r['satuan']}</b> | Lokasi: <code>{$r['lokasi_gudang']}</code>\n\n";
+            }
+        } else {
+            $text .= "❌ Maaf, barang tidak ditemukan.\nCoba gunakan kata kunci lain.";
+        }
+
+        $keyboard = ['inline_keyboard' => [[['text' => '🏠 Kembali ke Menu', 'callback_data' => 'home']]]];
+        $this->sendMessage($chat_id, $text, $keyboard);
+    }
+
+    /* =====================================================
+       EXPORT PDF
+    ===================================================== */
+    private function menuExport($chat_id, $message_id, $callback)
+    {
+        $text  = "📄 <b>PUSAT LAPORAN PDF</b>\n";
+        $text .= "━━━━━━━━━━━━━━━━━━\n";
+        $text .= "Silakan pilih kategori laporan yang ingin Anda buat secara otomatis:";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => '📦 Laporan Stok (Master)', 'callback_data' => 'pdf_stok']],
+                [['text' => '📅 Mutasi Harian', 'callback_data' => 'pdf_harian']],
+                [['text' => '🗓 Mutasi Mingguan', 'callback_data' => 'pdf_mingguan']],
+                [['text' => '📆 Mutasi Bulanan', 'callback_data' => 'pdf_bulanan']],
+                [['text' => '🏠 Kembali', 'callback_data' => 'home']]
+            ]
+        ];
+
+        $this->sendOrEdit($chat_id, $message_id, $text, $keyboard, $callback);
+    }
+
+    private function exportPdf($chat_id, $type)
+    {
+        try {
+
+            $pdf = new PdfService();
+
+            if ($type == 'stok') $file = $pdf->stok();
+            elseif ($type == 'harian') $file = $pdf->harian();
+            elseif ($type == 'mingguan') $file = $pdf->mingguan();
+            else $file = $pdf->bulanan();
+
+            $keyboard = [
+                'inline_keyboard' => [
+                    [['text' => '🏠 Menu', 'callback_data' => 'home']]
+                ]
+            ];
+
+            $this->sendDocument($chat_id, $file, $keyboard);
+        } catch (\Throwable $e) {
+
+            $this->sendMessage($chat_id, "❌ Gagal membuat PDF.");
+        }
+    }
+
+    /* =====================================================
+       BANTUAN
+    ===================================================== */
+    private function panduan($chat_id, $message_id, $callback)
+    {
+        $text  = "⚙️ <b>BANTUAN</b>\n\n";
+        $text .= "📊 Ringkasan = Dashboard cepat\n";
+        $text .= "🔎 Cari Barang = Ketik nama barang\n";
+        $text .= "⚠️ Alert = Barang menipis\n";
+        $text .= "📄 Laporan = Download PDF\n\n";
+        $text .= "Gunakan tombol ▶ Dashboard untuk Mini App.";
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => '🏠 Menu', 'callback_data' => 'home']]
+            ]
+        ];
+
+        $this->sendOrEdit($chat_id, $message_id, $text, $keyboard, $callback);
+    }
+
+    /* =====================================================
+       CORE TELEGRAM
+    ===================================================== */
+    private function sendMessage($chat_id, $text, $keyboard = null)
+    {
+        $data = [
+            'chat_id' => $chat_id,
+            'text' => $text,
+            'parse_mode' => 'HTML'
+        ];
+
+        if ($keyboard) {
+            $data['reply_markup'] = json_encode($keyboard);
+        }
+
+        $this->request('sendMessage', $data);
+    }
+
+    private function sendOrEdit($chat_id, $message_id, $text, $keyboard, $callback = false)
+    {
+        if ($callback) {
+
+            $this->request('editMessageText', [
+                'chat_id' => $chat_id,
+                'message_id' => $message_id,
+                'text' => $text,
+                'parse_mode' => 'HTML',
                 'reply_markup' => json_encode($keyboard)
             ]);
         } else {
-            $this->kirimPesan($chat_id, $text, $keyboard);
+
+            $this->sendMessage($chat_id, $text, $keyboard);
         }
     }
 
-    private function kirimPesan($chat_id, $text, $keyboard = null)
+    private function sendDocument($chat_id, $file, $keyboard = null)
     {
-        $data = ['chat_id' => $chat_id, 'text' => $text, 'parse_mode' => 'HTML'];
-        if ($keyboard) $data['reply_markup'] = json_encode($keyboard);
-        $this->sendApiRequest('sendMessage', $data);
+        if (!file_exists($file)) {
+            $this->sendMessage($chat_id, '❌ File tidak ditemukan.');
+            return;
+        }
+
+        $url = $this->api . 'sendDocument';
+
+        $post = [
+            'chat_id' => $chat_id,
+            'document' => new \CURLFile($file, 'application/pdf', basename($file))
+        ];
+
+        if ($keyboard) {
+            $post['reply_markup'] = json_encode($keyboard);
+        }
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_exec($ch);
+        curl_close($ch);
+
+        @unlink($file);
     }
 
-    private function kirimFoto($chat_id, $photoUrl, $caption, $keyboard = null)
+    private function answerCallback($id)
     {
-        $data = ['chat_id' => $chat_id, 'photo' => $photoUrl, 'caption' => $caption, 'parse_mode' => 'HTML'];
-        if ($keyboard) $data['reply_markup'] = json_encode($keyboard);
-        $this->sendApiRequest('sendPhoto', $data);
+        $this->request('answerCallbackQuery', [
+            'callback_query_id' => $id
+        ]);
     }
 
-    private function sendApiRequest($method, $data)
+    private function request($method, $data)
     {
-        $client = \Config\Services::curlrequest();
         try {
-            $client->post($this->apiUrl . $this->token . '/' . $method, [
+
+            $client = \Config\Services::curlrequest();
+
+            $client->post($this->api . $method, [
                 'form_params' => $data,
                 'http_errors' => false,
-                'timeout'     => 15,
-                'verify'      => false // ANTI ERROR DI LOCALHOST XAMPP
+                'timeout' => 20
             ]);
-        } catch (\Exception $e) {
-            log_message('error', 'Curl Error Telegram: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+
+            log_message('error', $e->getMessage());
         }
     }
 
-    public static function kirimNotifSistem($pesanPeringatan)
+    /* =====================================================
+       PLAY BUTTON MINI APP
+    ===================================================== */
+    public function setMiniAppButton()
     {
-        $telegram = new self();
-        $admin_ids = ['6069266941'];
-        foreach ($admin_ids as $admin_id) {
-            $pesan = "🚨 <b>SYSTEM ALERT</b> 🚨\n━━━━━━━━━━━━━━━━━━\n\n" . $pesanPeringatan;
-            $telegram->sendApiRequest('sendMessage', ['chat_id' => $admin_id, 'text' => $pesan, 'parse_mode' => 'HTML']);
-        }
-    }
+        $token = getenv('telegram.token');
 
-    private function menuUtama()
-    {
-        // Penambahan Menu "Profil Saya"
-        return [
-            'inline_keyboard' => [
-                [['text' => '📦 Cek Semua Stok', 'callback_data' => 'cekstok_0'], ['text' => '🚨 Stok Kritis', 'callback_data' => '⚠ Kritis']],
-                [['text' => '📥 Brg Masuk', 'callback_data' => '📥 Masuk'], ['text' => '📤 Brg Keluar', 'callback_data' => '📤 Keluar']],
-                [['text' => '📊 Dashboard Live', 'callback_data' => '📊 Dashboard'], ['text' => '🔎 Cari Material', 'callback_data' => '🔎 Cari']],
-                [['text' => '📄 Histori Transaksi', 'callback_data' => '📄 Histori'], ['text' => '👤 Profil Saya', 'callback_data' => '👤 Profil Saya']],
-                [['text' => '🔄 Refresh Sistem', 'callback_data' => '🏠 Menu'], ['text' => '🏢 Tentang Bot', 'callback_data' => '🏢 Tentang']]
-            ]
+        $url = "https://api.telegram.org/bot{$token}/setChatMenuButton";
+
+        $data = [
+            'menu_button' => json_encode([
+                'type' => 'web_app',
+                'text' => '▶ Dashboard',
+                'web_app' => [
+                    'url' => 'https://stokgudangg.my.id/miniapp'
+                ]
+            ])
         ];
-    }
 
-    private function menuKembali()
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        $result = curl_exec($ch);
+        curl_close($ch);
+
+        echo $result;
+    }
+    /* =====================================================
+    TRIGGER PDF DARI MINI APP (AJAX)
+===================================================== */
+    public function triggerPdf()
     {
-        return ['inline_keyboard' => [[['text' => '🏠 Kembali ke Menu', 'callback_data' => '🏠 Menu']]]];
+        $chat_id = $this->request->getPost('telegram_id');
+
+        if (!$chat_id) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'ID tidak ditemukan']);
+        }
+
+        // UBAH 'harian' MENJADI 'stok' agar bot mengirim laporan stok barang
+        $this->exportPdf($chat_id, 'stok');
+
+        return $this->response->setJSON(['status' => 'success']);
     }
 }

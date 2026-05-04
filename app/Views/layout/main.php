@@ -5,291 +5,444 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title><?= $title ?? 'PT WIKA Beton' ?></title>
+    <title><?= $title ?? 'WIKA BETON SYSTEM' ?></title>
 
+    <link rel="icon" href="<?= base_url('favicon.ico') ?>?v=300">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         * {
-            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
         }
 
         :root {
-            --primary: #003366;
-            --secondary: #005BAC;
-            --accent: #f5a623;
-            --dark: #0f172a;
-            --gray: #64748b;
+            --navy: #071a46;
+            --navy2: #0e2f75;
+            --gold: #f7c948;
+            --gold2: #ffd86b;
+            --soft: #f5f7fb;
+            --line: #e8edf5;
+            --text: #0f172a;
+            --muted: #94a3b8;
+            --white: #ffffff;
         }
 
         body {
-            margin: 0;
-            background: #f8fafc;
-            color: #111827;
+            background: var(--soft);
+            color: var(--text);
+            overflow-x: hidden;
         }
 
-        /* MOBILE TOPBAR */
-        .mobile-topbar {
-            display: none;
-            position: sticky;
-            top: 0;
-            z-index: 1050;
-            background: white;
-            padding: 14px 18px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, .04);
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .mobile-brand {
-            font-weight: 800;
-            font-size: 18px;
-        }
-
-        .mobile-brand span {
-            color: var(--accent);
-        }
-
-        .menu-btn {
-            width: 42px;
-            height: 42px;
-            border: none;
-            border-radius: 12px;
-            background: #f1f5f9;
-            font-size: 20px;
-        }
-
-        /* SIDEBAR */
+        /* ======================
+SIDEBAR DESKTOP
+====================== */
         .sidebar {
-            width: 275px;
-            height: 100vh;
             position: fixed;
             top: 0;
             left: 0;
-            background: linear-gradient(180deg, #0b1120, #111827);
-            padding: 24px 18px;
-            color: white;
+            width: 270px;
+            height: 100vh;
+            background: linear-gradient(180deg, var(--navy), #021133);
+            padding: 18px;
+            z-index: 1000;
             overflow-y: auto;
             transition: .3s ease;
-            z-index: 1040;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, .08);
         }
 
-        .brand-box {
-            padding: 12px;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, .04);
-            margin-bottom: 24px;
+        .sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .12);
+            border-radius: 20px;
         }
 
         .brand {
-            font-size: 26px;
-            font-weight: 800;
-            line-height: 1.1;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 8px 8px 22px;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            margin-bottom: 16px;
         }
 
-        .brand span {
-            color: var(--accent);
+        .brand-logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, var(--gold), var(--gold2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 900;
+            color: #111;
+            box-shadow: 0 12px 24px rgba(247, 201, 72, .25);
         }
 
-        .brand small {
-            display: block;
-            margin-top: 8px;
-            color: #94a3b8;
-            font-size: 12px;
-            font-weight: 500;
+        .brand-text h5 {
+            margin: 0;
+            font-size: 24px;
+            line-height: 1.05;
+            font-weight: 900;
+            color: #fff;
         }
 
-        .user-box {
-            background: rgba(255, 255, 255, .05);
-            padding: 14px;
-            border-radius: 16px;
-            margin-bottom: 20px;
-        }
-
-        .user-box small {
-            color: #94a3b8;
-        }
-
-        .user-box strong {
-            display: block;
-            margin-top: 4px;
+        .brand-text small {
+            color: #bfd0f5;
+            font-size: 13px;
         }
 
         .menu-title {
-            color: #64748b;
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 800;
             letter-spacing: 1px;
-            margin: 18px 10px 10px;
+            padding: 0 10px;
+            margin: 18px 0 10px;
+            color: #7f95c6;
         }
 
-        .sidebar a {
+        .menu a {
             display: flex;
             align-items: center;
-            gap: 12px;
-            text-decoration: none;
-            color: #e2e8f0;
-            padding: 13px 14px;
-            border-radius: 14px;
+            gap: 14px;
+            padding: 14px 16px;
+            border-radius: 18px;
             margin-bottom: 8px;
-            font-weight: 600;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 700;
+            color: #dbeafe;
             transition: .25s ease;
         }
 
-        .sidebar a:hover,
-        .sidebar a.active {
-            background: linear-gradient(135deg, #f5a623, #ffbf47);
-            color: #111827;
-            transform: translateX(4px);
+        .menu a:hover {
+            background: rgba(255, 255, 255, .06);
+            transform: translateX(5px);
         }
 
-        .logout-link {
-            margin-top: 18px;
-            background: rgba(239, 68, 68, .08);
-            color: #fca5a5 !important;
+        .menu a.active {
+            background: linear-gradient(135deg, var(--gold), var(--gold2));
+            color: #111;
+            box-shadow: 0 12px 24px rgba(247, 201, 72, .18);
         }
 
-        /* OVERLAY */
+        .menu-icon {
+            width: 22px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .logout-box {
+            margin-top: 22px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, .08);
+        }
+
+        /* ======================
+MAIN
+====================== */
+        .main {
+            margin-left: 270px;
+            min-height: 100vh;
+            transition: .3s ease;
+        }
+
+        /* ======================
+TOPBAR
+====================== */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, .92);
+            backdrop-filter: blur(14px);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .desktop-title h4 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 900;
+            line-height: 1.1;
+        }
+
+        .desktop-title small {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .mobile-title {
+            display: none;
+        }
+
+        .profile-btn {
+            width: 46px;
+            height: 46px;
+            border: none;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #eff6ff, #ffffff);
+            font-size: 20px;
+            cursor: pointer;
+            font-weight: 700;
+            border: 1px solid #dbeafe;
+        }
+
+        /* ======================
+CONTENT
+====================== */
+        .content {
+            padding: 26px;
+        }
+
+        .footer {
+            padding: 18px;
+            text-align: center;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        /* ======================
+OVERLAY
+====================== */
         .overlay {
             display: none;
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, .45);
-            z-index: 1030;
+            z-index: 999;
         }
 
-        .overlay.show {
-            display: block;
+        /* ======================
+BOTTOM NAV
+====================== */
+        .bottom-nav {
+            display: none;
         }
 
-        /* CONTENT */
-        .content {
-            margin-left: 275px;
-            padding: 30px;
-            min-height: 100vh;
-        }
-
-        .top-info {
-            background: white;
-            border-radius: 18px;
-            padding: 14px 20px;
-            box-shadow: 0 10px 25px rgba(15, 23, 42, .04);
-            margin-bottom: 22px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .footer {
-            margin-top: 35px;
-            text-align: center;
-            color: #94a3b8;
-            font-size: 13px;
-        }
-
-        /* MOBILE */
-        @media(max-width:992px) {
-
-            .mobile-topbar {
-                display: flex;
-            }
+        /* ======================
+MOBILE
+====================== */
+        @media(max-width:991px) {
 
             .sidebar {
-                left: -290px;
+                left: -320px;
+                width: 290px;
             }
 
             .sidebar.show {
                 left: 0;
             }
 
-            .content {
-                margin-left: 0;
-                padding: 18px;
+            .overlay.show {
+                display: block;
             }
 
+            .main {
+                margin-left: 0;
+                padding-bottom: 88px;
+            }
+
+            .desktop-title {
+                display: none;
+            }
+
+            .mobile-title {
+                display: block;
+            }
+
+            .mobile-title .hello {
+                font-size: 17px;
+                font-weight: 900;
+                line-height: 1.1;
+            }
+
+            .mobile-title small {
+                font-size: 12px;
+                color: #94a3b8;
+            }
+
+            .topbar {
+                padding: 14px 16px;
+            }
+
+            .profile-btn {
+                width: 42px;
+                height: 42px;
+                font-size: 18px;
+                border-radius: 14px;
+            }
+
+            .content {
+                padding: 14px;
+            }
+
+            .footer {
+                padding: 14px;
+                font-size: 12px;
+            }
+
+            .bottom-nav {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                position: fixed;
+                left: 12px;
+                right: 12px;
+                bottom: 12px;
+                padding: 10px 6px;
+                background: rgba(255, 255, 255, .86);
+                backdrop-filter: blur(18px);
+                -webkit-backdrop-filter: blur(18px);
+                border-radius: 22px;
+                box-shadow: 0 20px 35px rgba(0, 0, 0, .10);
+                z-index: 998;
+            }
+
+            .bottom-nav a {
+                text-decoration: none;
+                text-align: center;
+                font-size: 11px;
+                font-weight: 800;
+                color: #64748b;
+                padding: 6px 0;
+            }
+
+            .bottom-nav a span {
+                display: block;
+                font-size: 18px;
+                margin-bottom: 4px;
+            }
+
+            .bottom-nav a.active {
+                color: #0b2d74;
+                transform: translateY(-2px);
+            }
+
+            .bottom-nav a.active span {
+                filter: drop-shadow(0 6px 10px rgba(11, 45, 116, .25));
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <!-- MOBILE -->
-    <div class="mobile-topbar">
-        <button class="menu-btn" onclick="openSidebar()">☰</button>
-
-        <div class="mobile-brand">
-            <span>WIKA</span> BETON
-        </div>
-    </div>
-
     <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
     <!-- SIDEBAR -->
     <div class="sidebar" id="sidebar">
 
-        <div class="brand-box">
-            <div class="brand">
-                <span>WIKA</span> BETON
-                <small>Monitoring Material System</small>
+        <div class="brand">
+            <div class="brand-logo">W</div>
+            <div class="brand-text">
+                <h5>WIKA<br>BETON</h5>
+                <small>Material System</small>
             </div>
         </div>
 
-        <div class="user-box">
-            <small>Login Sebagai</small>
-            <strong><?= session()->get('nama') ?? 'Administrator' ?></strong>
+        <div class="menu">
+
+            <div class="menu-title">MAIN MENU</div>
+
+            <a href="<?= base_url('dashboard') ?>" class="<?= uri_string() == 'dashboard' ? 'active' : '' ?>">
+                <span class="menu-icon">🏠</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="<?= base_url('barang') ?>" class="<?= uri_string() == 'barang' ? 'active' : '' ?>">
+                <span class="menu-icon">📦</span>
+                <span>Master Material</span>
+            </a>
+
+            <a href="<?= base_url('barang-masuk') ?>" class="<?= uri_string() == 'barang-masuk' ? 'active' : '' ?>">
+                <span class="menu-icon">📥</span>
+                <span>Barang Masuk</span>
+            </a>
+
+            <a href="<?= base_url('barang-keluar') ?>" class="<?= uri_string() == 'barang-keluar' ? 'active' : '' ?>">
+                <span class="menu-icon">📤</span>
+                <span>Barang Keluar</span>
+            </a>
+
+            <a href="<?= base_url('histori') ?>" class="<?= uri_string() == 'histori' ? 'active' : '' ?>">
+                <span class="menu-icon">📑</span>
+                <span>Histori</span>
+            </a>
+
+            <div class="logout-box">
+
+                <a href="<?= base_url('logout') ?>">
+                    <span class="menu-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+
+            <div class="desktop-title">
+                <h4>Material Monitoring Dashboard</h4>
+                <small><?= date('l, d F Y') ?></small>
+            </div>
+
+            <div class="mobile-title">
+                <div class="hello">👋 Halo, <?= session()->get('nama') ?? 'Manager' ?></div>
+                <small><?= date('d M Y') ?></small>
+            </div>
+
+            <button class="profile-btn" onclick="openSidebar()">👤</button>
+
         </div>
 
-        <div class="menu-title">MAIN MENU</div>
+        <!-- CONTENT -->
+        <div class="content">
+            <?= $this->renderSection('content') ?>
+        </div>
 
-        <a href="<?= base_url('dashboard') ?>" class="<?= uri_string() == 'dashboard' ? 'active' : '' ?>">
-            🏠 Dashboard
-        </a>
-
-        <a href="<?= base_url('barang') ?>" class="<?= uri_string() == 'barang' ? 'active' : '' ?>">
-            📦 Master Material
-        </a>
-
-        <a href="<?= base_url('barang-masuk') ?>" class="<?= uri_string() == 'barang-masuk' ? 'active' : '' ?>">
-            📥 Barang Masuk
-        </a>
-
-        <a href="<?= base_url('barang-keluar') ?>" class="<?= uri_string() == 'barang-keluar' ? 'active' : '' ?>">
-            📤 Barang Keluar
-        </a>
-
-        <a href="<?= base_url('histori') ?>" class="<?= uri_string() == 'histori' ? 'active' : '' ?>">
-            📑 Histori
-        </a>
-
-        <div class="menu-title">ACCOUNT</div>
-
-        <a href="<?= base_url('logout') ?>" class="logout-link">
-            🚪 Logout
-        </a>
+        <div class="footer">
+            © <?= date('Y') ?> PT Wijaya Karya Beton Tbk • Internal Enterprise System
+        </div>
 
     </div>
 
-    <!-- CONTENT -->
-    <div class="content">
+    <!-- MOBILE BOTTOM NAV -->
+    <div class="bottom-nav">
 
-        <div class="top-info">
-            <div>
-                <strong><?= date('l, d F Y') ?></strong>
-            </div>
+        <a href="<?= base_url('dashboard') ?>" class="<?= uri_string() == 'dashboard' ? 'active' : '' ?>">
+            <span>🏠</span>Home
+        </a>
 
-            <div>
-                Sistem Gudang Material PT WIKA Beton
-            </div>
-        </div>
+        <a href="<?= base_url('barang') ?>" class="<?= uri_string() == 'barang' ? 'active' : '' ?>">
+            <span>📦</span>Data
+        </a>
 
-        <?= $this->renderSection('content') ?>
+        <a href="<?= base_url('barang-masuk') ?>" class="<?= uri_string() == 'barang-masuk' ? 'active' : '' ?>">
+            <span>📥</span>Masuk
+        </a>
 
-        <div class="footer">
-            © <?= date('Y') ?> PT Wijaya Karya Beton Tbk • Internal System
-        </div>
+        <a href="<?= base_url('barang-keluar') ?>" class="<?= uri_string() == 'barang-keluar' ? 'active' : '' ?>">
+            <span>📤</span>Keluar
+        </a>
+
+        <a href="<?= base_url('histori') ?>" class="<?= uri_string() == 'histori' ? 'active' : '' ?>">
+            <span>📄</span>Histori
+        </a>
 
     </div>
 

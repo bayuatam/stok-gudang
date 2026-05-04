@@ -30,7 +30,7 @@ class Auth extends BaseController
                     'logged_in' => true
                 ]);
 
-                // 🔥 FIX redirect (biar aman di ngrok & localhost)
+                // ðŸ”¥ FIX redirect (biar aman di ngrok & localhost)
                 return redirect()->to(base_url('dashboard'));
             }
         }
@@ -42,7 +42,7 @@ class Auth extends BaseController
     {
         session()->destroy();
 
-        // 🔥 FIX redirect
+        // ðŸ”¥ FIX redirect
         return redirect()->to(base_url('/'));
     }
 }

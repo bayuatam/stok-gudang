@@ -20,7 +20,7 @@
         </div>
 
         <div class="hero-icon">
-            📤
+            ðŸ“¤
         </div>
 
     </div>
@@ -33,18 +33,19 @@
 
             <div class="panel-box h-100">
 
+                <!-- BARU -->
                 <div class="info-box mb-4">
                     Pastikan stok mencukupi sebelum melakukan transaksi keluar.
                 </div>
 
                 <?php if (session()->getFlashdata('success')): ?>
-                    <div class="alert alert-success">
+                    <div class="alert alert-success rounded-4">
                         <?= session()->getFlashdata('success') ?>
                     </div>
                 <?php endif; ?>
 
                 <?php if (session()->getFlashdata('error')): ?>
-                    <div class="alert alert-danger">
+                    <div class="alert alert-danger rounded-4">
                         <?= session()->getFlashdata('error') ?>
                     </div>
                 <?php endif; ?>
@@ -58,6 +59,7 @@
 
                 <form method="post" action="<?= base_url('barang-keluar/simpan') ?>">
 
+                    <!-- BARU -->
                     <div class="mb-3">
                         <label>Pilih Material</label>
 
@@ -88,6 +90,7 @@
                                 required>
                         </div>
 
+                        <!-- BARU -->
                         <div class="col-md-6">
                             <label>No Dokumen</label>
                             <input type="text"
@@ -96,6 +99,7 @@
                                 placeholder="SPK / WO / BON">
                         </div>
 
+                        <!-- BARU -->
                         <div class="col-md-12">
                             <label>Tujuan / Keterangan</label>
                             <input type="text"
@@ -106,7 +110,7 @@
 
                     </div>
 
-                    <div class="mt-5 d-flex gap-2 flex-wrap">
+                    <div class="btn-wrap mt-5">
 
                         <button type="submit" class="btn btn-main">
                             Simpan Transaksi
@@ -127,16 +131,19 @@
         <!-- SIDE INFO -->
         <div class="col-lg-4">
 
+            <!-- BARU -->
             <div class="mini-card mb-4">
                 <small>Total Material</small>
                 <h3><?= count($barang) ?></h3>
             </div>
 
+            <!-- BARU -->
             <div class="mini-card mb-4">
                 <small>Status Gudang</small>
                 <h3 class="text-success">Aktif</h3>
             </div>
 
+            <!-- BARU -->
             <div class="mini-card">
                 <small>Catatan</small>
                 <p class="mb-0 text-muted mt-2">
@@ -153,7 +160,7 @@
 <style>
     .hero-box {
         background: linear-gradient(135deg, #991b1b, #ef4444);
-        color: white;
+        color: #fff;
         border-radius: 24px;
         padding: 28px;
         display: flex;
@@ -182,19 +189,20 @@
     }
 
     .hero-icon {
-        width: 70px;
-        height: 70px;
-        border-radius: 20px;
+        width: 72px;
+        height: 72px;
+        border-radius: 22px;
         background: rgba(255, 255, 255, .14);
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 30px;
+        backdrop-filter: blur(8px);
     }
 
     .panel-box,
     .mini-card {
-        background: white;
+        background: #fff;
         border-radius: 24px;
         padding: 24px;
         box-shadow: 0 12px 30px rgba(15, 23, 42, .05);
@@ -221,6 +229,7 @@
         font-size: 14px;
         font-weight: 700;
         margin-bottom: 8px;
+        display: block;
     }
 
     .form-control,
@@ -228,6 +237,7 @@
         height: 54px;
         border-radius: 14px;
         border: 1px solid #e5e7eb;
+        padding: 0 14px;
     }
 
     .form-control:focus,
@@ -236,13 +246,19 @@
         border-color: #ef4444;
     }
 
+    .btn-wrap {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
     .btn-main {
         background: linear-gradient(135deg, #f5a623, #ffbf47);
         border: none;
         color: #111827;
         font-weight: 800;
         border-radius: 14px;
-        padding: 12px 24px;
+        padding: 13px 24px;
     }
 
     .btn-back {
@@ -250,7 +266,7 @@
         border: none;
         font-weight: 700;
         border-radius: 14px;
-        padding: 12px 24px;
+        padding: 13px 24px;
     }
 
     .mini-card small {
@@ -269,17 +285,44 @@
         .hero-box,
         .panel-box,
         .mini-card {
-            padding: 20px;
+            padding: 18px;
+            border-radius: 18px;
         }
 
         .hero-title {
-            font-size: 24px;
+            font-size: 22px;
+        }
+
+        .hero-subtitle {
+            font-size: 13px;
         }
 
         .hero-icon {
-            width: 58px;
-            height: 58px;
+            width: 56px;
+            height: 56px;
             font-size: 24px;
+            border-radius: 16px;
+        }
+
+        .form-control,
+        .form-select {
+            height: 48px;
+            font-size: 14px;
+        }
+
+        .btn-wrap {
+            flex-direction: column;
+        }
+
+        .btn-main,
+        .btn-back {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+        }
+
+        label {
+            font-size: 13px;
         }
     }
 </style>

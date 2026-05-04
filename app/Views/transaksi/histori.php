@@ -8,20 +8,24 @@
 
         <div>
             <div class="hero-mini">PT WIJAYA KARYA BETON TBK</div>
-            <h2 class="hero-title mb-1">Histori Transaksi</h2>
+
+            <h2 class="hero-title mb-1">
+                Histori Transaksi
+            </h2>
+
             <p class="hero-subtitle mb-0">
                 Riwayat aktivitas stok material perusahaan
             </p>
         </div>
 
-        <div class="d-flex gap-2 flex-wrap">
+        <div class="hero-action">
 
             <a href="<?= base_url('histori/pdf') ?>" class="btn btn-pdf">
-                📄 PDF
+                ðŸ“„ PDF
             </a>
 
             <a href="<?= base_url('histori/excel') ?>" class="btn btn-excel">
-                📊 Excel
+                ðŸ“Š Excel
             </a>
 
         </div>
@@ -29,30 +33,30 @@
     </div>
 
     <!-- KPI -->
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-4">
 
-        <div class="col-md-3">
+        <div class="col-6 col-xl-3">
             <div class="mini-card">
                 <small>Total Aktivitas</small>
                 <h3><?= $total_transaksi ?></h3>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-xl-3">
             <div class="mini-card">
                 <small>Barang Masuk</small>
                 <h3 class="text-success"><?= $total_masuk ?></h3>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-xl-3">
             <div class="mini-card">
                 <small>Barang Keluar</small>
                 <h3 class="text-danger"><?= $total_keluar ?></h3>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-xl-3">
             <div class="mini-card">
                 <small>Status</small>
                 <h3 class="text-primary">Live</h3>
@@ -66,14 +70,14 @@
 
         <div class="row g-3">
 
-            <div class="col-md-8">
+            <div class="col-12 col-lg-8">
                 <input type="text"
                     id="searchInput"
                     class="form-control search-box"
-                    placeholder="🔎 Cari material / kode / user...">
+                    placeholder="Cari material / kode / user...">
             </div>
 
-            <div class="col-md-2">
+            <div class="col-6 col-lg-2">
                 <select class="form-select" id="filterJenis">
                     <option value="">Semua</option>
                     <option value="masuk">Barang Masuk</option>
@@ -81,7 +85,7 @@
                 </select>
             </div>
 
-            <div class="col-md-2">
+            <div class="col-6 col-lg-2">
                 <button class="btn btn-reset w-100" onclick="resetFilter()">
                     Reset
                 </button>
@@ -137,11 +141,11 @@
 
                                 <?php if ($t['jenis'] == 'masuk'): ?>
                                     <span class="badge bg-success">
-                                        📥 Masuk
+                                        ðŸ“¥ Masuk
                                     </span>
                                 <?php else: ?>
                                     <span class="badge bg-danger">
-                                        📤 Keluar
+                                        ðŸ“¤ Keluar
                                     </span>
                                 <?php endif; ?>
 
@@ -172,7 +176,7 @@
 <style>
     .hero-box {
         background: linear-gradient(135deg, #003366, #005BAC);
-        color: white;
+        color: #fff;
         border-radius: 24px;
         padding: 28px;
         display: flex;
@@ -196,15 +200,22 @@
     }
 
     .hero-subtitle {
-        opacity: .9
+        opacity: .92;
+    }
+
+    .hero-action {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 
     .mini-card,
     .panel-box {
-        background: white;
+        background: #fff;
         border-radius: 22px;
         padding: 24px;
         box-shadow: 0 10px 25px rgba(15, 23, 42, .05);
+        height: 100%;
     }
 
     .mini-card small {
@@ -234,16 +245,18 @@
 
     .btn-pdf {
         background: #ef4444;
-        color: white;
+        color: #fff;
         font-weight: 700;
         border-radius: 14px;
+        padding: 12px 18px;
     }
 
     .btn-excel {
         background: #16a34a;
-        color: white;
+        color: #fff;
         font-weight: 700;
         border-radius: 14px;
+        padding: 12px 18px;
     }
 
     .btn-reset {
@@ -251,19 +264,21 @@
         font-weight: 700;
         border-radius: 14px;
         height: 52px;
+        border: none;
     }
 
     .table-enterprise thead th {
         background: #f8fafc;
         border: none;
         color: #64748b;
-        position: sticky;
-        top: 0;
-        z-index: 1;
+        font-size: 14px;
+        white-space: nowrap;
     }
 
     .table-enterprise td {
         border-color: #eef2f7;
+        font-size: 14px;
+        white-space: nowrap;
     }
 
     .table-enterprise tbody tr:hover {
@@ -275,11 +290,44 @@
         .hero-box,
         .mini-card,
         .panel-box {
-            padding: 18px
+            padding: 18px;
+            border-radius: 18px;
         }
 
         .hero-title {
-            font-size: 24px
+            font-size: 22px;
+        }
+
+        .hero-subtitle {
+            font-size: 13px;
+        }
+
+        .hero-action {
+            width: 100%;
+        }
+
+        .btn-pdf,
+        .btn-excel {
+            flex: 1;
+            text-align: center;
+            font-size: 13px;
+            padding: 11px;
+        }
+
+        .search-box,
+        .form-select,
+        .btn-reset {
+            height: 46px;
+            font-size: 14px;
+        }
+
+        .mini-card h3 {
+            font-size: 22px;
+        }
+
+        .table-enterprise td,
+        .table-enterprise th {
+            font-size: 12px;
         }
     }
 </style>
@@ -291,6 +339,7 @@
     const resultCount = document.getElementById("resultCount");
 
     function filterTable() {
+
         let keyword = searchInput.value.toLowerCase();
         let jenis = filterJenis.value.toLowerCase();
         let visible = 0;

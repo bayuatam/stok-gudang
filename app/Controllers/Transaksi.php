@@ -8,9 +8,6 @@ use Dompdf\Dompdf;
 
 class Transaksi extends BaseController
 {
-    private $token   = '8664592787:AAHxTnEZyozCWVWaM_lBXLBDNkH9BCIJwto';
-    private $chat_id = '6069266941';
-
     /* =====================================
        FORM BARANG MASUK
     ===================================== */
@@ -18,7 +15,10 @@ class Transaksi extends BaseController
     {
         $barangModel = new BarangModel();
 
-        $data['barang'] = $barangModel->findAll();
+        $data['barang'] = $barangModel
+            ->where('status_barang', 'Aktif')
+            ->orderBy('nama_material', 'ASC')
+            ->findAll();
 
         return view('transaksi/masuk', $data);
     }
@@ -28,46 +28,59 @@ class Transaksi extends BaseController
     ===================================== */
     public function simpanMasuk()
     {
+        $db             = \Config\Database::connect();
         $barangModel    = new BarangModel();
         $transaksiModel = new TransaksiModel();
 
-        $barang_id = $this->request->getPost('barang_id');
-        $jumlah    = (int)$this->request->getPost('jumlah');
-
-        $barang = $barangModel->find($barang_id);
-
-        if (!$barang) {
-            return redirect()->back()->with('error', 'Material tidak ditemukan');
-        }
+        $barang_id  = (int)$this->request->getPost('barang_id');
+        $jumlah     = (int)$this->request->getPost('jumlah');
+        $dokumen    = trim($this->request->getPost('dokumen'));
+        $keterangan = trim($this->request->getPost('keterangan'));
 
         if ($jumlah <= 0) {
             return redirect()->back()->with('error', 'Jumlah harus lebih dari 0');
         }
 
-        $stok_baru = $barang['stok'] + $jumlah;
+        $barang = $barangModel->find($barang_id);
+
+        if (!$barang) {
+            return redirect()->back()->with('error', 'Barang tidak ditemukan');
+        }
+
+        $stokBaru = $barang['stok'] + $jumlah;
+
+        $db->transStart();
 
         $barangModel->update($barang_id, [
-            'stok' => $stok_baru
+            'stok' => $stokBaru
         ]);
 
-        $transaksiModel->save([
+        $transaksiModel->insert([
+            'tanggal'    => date('Y-m-d H:i:s'),
             'jenis'      => 'masuk',
             'barang_id'  => $barang_id,
             'jumlah'     => $jumlah,
-            'user_id'    => session()->get('id'),
-            'keterangan' => 'Barang masuk'
+            'user_id'    => session()->get('id') ?? 0,
+            'keterangan' => $dokumen . ' | ' . $keterangan
         ]);
 
-        $pesan  = "📥 BARANG MASUK\n\n";
-        $pesan .= "📦 {$barang['nama_material']}\n";
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return redirect()->back()->with('error', 'Gagal menyimpan transaksi');
+        }
+
+        $pesan  = "ðŸ“¥ BARANG MASUK\n\n";
+        $pesan .= "ðŸ“¦ {$barang['nama_material']}\n";
         $pesan .= "Jumlah: +{$jumlah} {$barang['satuan']}\n";
-        $pesan .= "Stok Sekarang: {$stok_baru}\n";
-        $pesan .= "Admin: " . session()->get('nama');
+        $pesan .= "Stok Baru: {$stokBaru}\n";
+        $pesan .= "Dokumen: {$dokumen}\n";
+        $pesan .= "Admin: " . (session()->get('nama') ?? 'System');
 
         $this->kirimTelegram($pesan);
 
         return redirect()->to('/barang-masuk')
-            ->with('success', 'Barang masuk berhasil');
+            ->with('success', 'Barang masuk berhasil disimpan');
     }
 
     /* =====================================
@@ -77,7 +90,11 @@ class Transaksi extends BaseController
     {
         $barangModel = new BarangModel();
 
-        $data['barang'] = $barangModel->findAll();
+        $data['barang'] = $barangModel
+            ->where('status_barang', 'Aktif')
+            ->where('stok >', 0)
+            ->orderBy('nama_material', 'ASC')
+            ->findAll();
 
         return view('transaksi/keluar', $data);
     }
@@ -87,71 +104,81 @@ class Transaksi extends BaseController
     ===================================== */
     public function simpanKeluar()
     {
+        $db             = \Config\Database::connect();
         $barangModel    = new BarangModel();
         $transaksiModel = new TransaksiModel();
 
-        $barang_id = $this->request->getPost('barang_id');
-        $jumlah    = (int)$this->request->getPost('jumlah');
+        $barang_id  = (int)$this->request->getPost('barang_id');
+        $jumlah     = (int)$this->request->getPost('jumlah');
+        $dokumen    = trim($this->request->getPost('dokumen'));
+        $keterangan = trim($this->request->getPost('keterangan'));
+
+        if ($jumlah <= 0) {
+            return redirect()->back()->with('error', 'Jumlah harus lebih dari 0');
+        }
 
         $barang = $barangModel->find($barang_id);
 
         if (!$barang) {
-            return redirect()->back()->with('error', 'Material tidak ditemukan');
-        }
-
-        if ($jumlah <= 0) {
-            return redirect()->back()->with('error', 'Jumlah harus lebih dari 0');
+            return redirect()->back()->with('error', 'Barang tidak ditemukan');
         }
 
         if ($barang['stok'] < $jumlah) {
             return redirect()->back()->with('error', 'Stok tidak mencukupi');
         }
 
-        $stok_baru = $barang['stok'] - $jumlah;
+        $stokBaru = $barang['stok'] - $jumlah;
+
+        $db->transStart();
 
         $barangModel->update($barang_id, [
-            'stok' => $stok_baru
+            'stok' => $stokBaru
         ]);
 
-        $transaksiModel->save([
+        $transaksiModel->insert([
+            'tanggal'    => date('Y-m-d H:i:s'),
             'jenis'      => 'keluar',
             'barang_id'  => $barang_id,
             'jumlah'     => $jumlah,
-            'user_id'    => session()->get('id'),
-            'keterangan' => 'Barang keluar'
+            'user_id'    => session()->get('id') ?? 0,
+            'keterangan' => $dokumen . ' | ' . $keterangan
         ]);
 
-        $pesan  = "📤 BARANG KELUAR\n\n";
-        $pesan .= "📦 {$barang['nama_material']}\n";
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return redirect()->back()->with('error', 'Gagal menyimpan transaksi');
+        }
+
+        $pesan  = "ðŸ“¤ BARANG KELUAR\n\n";
+        $pesan .= "ðŸ“¦ {$barang['nama_material']}\n";
         $pesan .= "Jumlah: -{$jumlah} {$barang['satuan']}\n";
-        $pesan .= "Sisa Stok: {$stok_baru}\n";
-        $pesan .= "Admin: " . session()->get('nama');
+        $pesan .= "Sisa Stok: {$stokBaru}\n";
+        $pesan .= "Dokumen: {$dokumen}\n";
+        $pesan .= "Admin: " . (session()->get('nama') ?? 'System');
 
         $this->kirimTelegram($pesan);
 
-        if ($stok_baru <= $barang['minimum_stok']) {
+        if ($stokBaru <= $barang['minimum_stok']) {
 
-            $alert  = "⚠ ALERT STOK KRITIS\n\n";
-            $alert .= "📦 {$barang['nama_material']}\n";
-            $alert .= "Sisa stok: {$stok_baru}\n";
+            $alert  = "âš  ALERT STOK KRITIS\n\n";
+            $alert .= "ðŸ“¦ {$barang['nama_material']}\n";
+            $alert .= "Sisa stok: {$stokBaru}\n";
             $alert .= "Minimum stok: {$barang['minimum_stok']}";
 
             $this->kirimTelegram($alert);
         }
 
         return redirect()->to('/barang-keluar')
-            ->with('success', 'Barang keluar berhasil');
+            ->with('success', 'Barang keluar berhasil disimpan');
     }
 
     /* =====================================
-       HISTORI TRANSAKSI
+       HISTORI
     ===================================== */
     public function histori()
     {
         $db = \Config\Database::connect();
-
-        $keyword = $this->request->getGet('keyword');
-        $jenis   = $this->request->getGet('jenis');
 
         $builder = $db->table('transaksi');
 
@@ -159,22 +186,12 @@ class Transaksi extends BaseController
             transaksi.*,
             barang.nama_material,
             barang.kode_sumber_daya,
+            barang.kategori,
             users.nama
         ");
 
         $builder->join('barang', 'barang.id = transaksi.barang_id');
         $builder->join('users', 'users.id = transaksi.user_id', 'left');
-
-        if ($keyword) {
-            $builder->groupStart();
-            $builder->like('barang.nama_material', $keyword);
-            $builder->orLike('barang.kode_sumber_daya', $keyword);
-            $builder->groupEnd();
-        }
-
-        if ($jenis) {
-            $builder->where('transaksi.jenis', $jenis);
-        }
 
         $builder->orderBy('transaksi.id', 'DESC');
 
@@ -196,7 +213,7 @@ class Transaksi extends BaseController
     }
 
     /* =====================================
-       EXPORT PDF
+       PDF
     ===================================== */
     public function exportPdf()
     {
@@ -218,7 +235,7 @@ class Transaksi extends BaseController
     }
 
     /* =====================================
-       EXPORT EXCEL
+       EXCEL
     ===================================== */
     public function exportExcel()
     {
@@ -234,9 +251,10 @@ class Transaksi extends BaseController
         $sheet = $spreadsheet->getActiveSheet();
 
         $sheet->setCellValue('A1', 'Tanggal');
-        $sheet->setCellValue('B1', 'Material');
+        $sheet->setCellValue('B1', 'Barang');
         $sheet->setCellValue('C1', 'Jenis');
         $sheet->setCellValue('D1', 'Jumlah');
+        $sheet->setCellValue('E1', 'Keterangan');
 
         $row = 2;
 
@@ -245,6 +263,7 @@ class Transaksi extends BaseController
             $sheet->setCellValue('B' . $row, $d['nama_material']);
             $sheet->setCellValue('C' . $row, $d['jenis']);
             $sheet->setCellValue('D' . $row, $d['jumlah']);
+            $sheet->setCellValue('E' . $row, $d['keterangan']);
             $row++;
         }
 
@@ -258,12 +277,17 @@ class Transaksi extends BaseController
     }
 
     /* =====================================
-       TELEGRAM
+       TELEGRAM (.env)
     ===================================== */
     private function kirimTelegram($pesan)
     {
+        $token = env('telegram.token');
+        $chat  = env('telegram.chat_id');
+
+        if (!$token || !$chat) return;
+
         @file_get_contents(
-            "https://api.telegram.org/bot{$this->token}/sendMessage?chat_id={$this->chat_id}&text=" . urlencode($pesan)
+            "https://api.telegram.org/bot{$token}/sendMessage?chat_id={$chat}&text=" . urlencode($pesan)
         );
     }
 }

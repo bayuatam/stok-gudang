@@ -1,56 +1,74 @@
 <?= $this->extend('layout/main') ?>
 <?= $this->section('content') ?>
 
+<?php
+$totalBarang = count($barang);
+
+$totalMaterial = count(array_filter($barang, fn($x) => $x['kategori'] == 'Material'));
+$totalSparepart = count(array_filter($barang, fn($x) => $x['kategori'] == 'Suku Cadang'));
+$totalBBM = count(array_filter($barang, fn($x) => $x['kategori'] == 'BBM'));
+
+$stokKritis = count(array_filter($barang, fn($x) => $x['stok'] <= 10 && $x['stok'] > 0));
+?>
+
 <div class="container-fluid">
 
     <!-- HERO -->
     <div class="hero-box mb-4">
-
         <div>
             <div class="hero-mini">PT WIJAYA KARYA BETON TBK</div>
-            <h2 class="hero-title mb-1">Master Material</h2>
+            <h2 class="hero-title mb-1">Master Barang Gudang</h2>
             <p class="hero-subtitle mb-0">
-                Monitoring data material gudang perusahaan
+                Monitoring data persediaan gudang perusahaan
             </p>
         </div>
 
         <a href="<?= base_url('barang/tambah') ?>" class="btn btn-main">
-            + Tambah Material
+            + Tambah Barang
         </a>
-
     </div>
 
     <!-- KPI -->
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-4">
 
-        <div class="col-md-3">
+        <div class="col-6 col-xl-2">
             <div class="mini-card">
-                <small>Total Material</small>
-                <h3><?= count($barang) ?></h3>
+                <small>Total Barang</small>
+                <h3><?= $totalBarang ?></h3>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-xl-2">
+            <div class="mini-card">
+                <small>Material</small>
+                <h3 class="text-primary"><?= $totalMaterial ?></h3>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-2">
+            <div class="mini-card">
+                <small>Suku Cadang</small>
+                <h3 style="color:#f59e0b"><?= $totalSparepart ?></h3>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-2">
+            <div class="mini-card">
+                <small>BBM</small>
+                <h3 class="text-success"><?= $totalBBM ?></h3>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-2">
             <div class="mini-card">
                 <small>Stok Kritis</small>
-                <h3 class="text-danger">
-                    <?= count(array_filter($barang, fn($x) => $x['stok'] <= 10 && $x['stok'] > 0)) ?>
-                </h3>
+                <h3 class="text-danger"><?= $stokKritis ?></h3>
             </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-6 col-xl-2">
             <div class="mini-card">
-                <small>Stok Habis</small>
-                <h3 class="text-warning">
-                    <?= count(array_filter($barang, fn($x) => $x['stok'] == 0)) ?>
-                </h3>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="mini-card">
-                <small>Status Sistem</small>
+                <small>Status</small>
                 <h3 class="text-success">Online</h3>
             </div>
         </div>
@@ -60,39 +78,34 @@
     <!-- PANEL -->
     <div class="panel-box">
 
-        <!-- FILTER -->
         <div class="row g-3 mb-4">
 
-            <div class="col-md-5">
+            <div class="col-12 col-lg-5">
                 <input type="text"
                     id="searchInput"
                     class="form-control search-box"
-                    placeholder="🔎 Cari nama / kode / gudang / kategori...">
+                    placeholder="Cari kode / nama barang / gudang...">
             </div>
 
-            <div class="col-md-2">
+            <div class="col-6 col-lg-2">
                 <select class="form-select" id="filterJenis">
                     <option value="">Semua Kategori</option>
-                    <option value="Agregat">Agregat</option>
-                    <option value="Baja">Baja</option>
-                    <option value="Chemical">Chemical</option>
-                    <option value="Sparepart">Sparepart</option>
-                    <option value="APD">APD</option>
-                    <option value="Electrical">Electrical</option>
-                    <option value="Utilitas">Utilitas</option>
+                    <option value="Material">Material</option>
+                    <option value="Suku Cadang">Suku Cadang</option>
+                    <option value="BBM">BBM</option>
                 </select>
             </div>
 
-            <div class="col-md-2">
+            <div class="col-6 col-lg-2">
                 <select class="form-select" id="filterStok">
                     <option value="">Semua Stok</option>
-                    <option value="aman">Stok Aman</option>
-                    <option value="kritis">Stok Kritis</option>
-                    <option value="habis">Stok Habis</option>
+                    <option value="aman">Aman</option>
+                    <option value="kritis">Kritis</option>
+                    <option value="habis">Habis</option>
                 </select>
             </div>
 
-            <div class="col-md-3">
+            <div class="col-12 col-lg-3">
                 <button class="btn btn-reset w-100" onclick="resetSearch()">
                     Reset Filter
                 </button>
@@ -100,26 +113,23 @@
 
         </div>
 
-        <!-- INFO -->
         <div class="result-box mb-3">
-            Menampilkan <strong id="resultCount"><?= count($barang) ?></strong> data material
+            Menampilkan <strong id="resultCount"><?= $totalBarang ?></strong> data barang
         </div>
 
-        <!-- TABLE -->
         <div class="table-responsive">
-
             <table class="table table-enterprise align-middle" id="materialTable">
 
                 <thead>
                     <tr>
                         <th>No</th>
                         <th>Kode</th>
-                        <th>Material</th>
+                        <th>Barang</th>
                         <th>Kategori</th>
                         <th>Stok</th>
                         <th>Gudang</th>
                         <th>Status</th>
-                        <th width="160">Aksi</th>
+                        <th width="170">Aksi</th>
                     </tr>
                 </thead>
 
@@ -132,21 +142,26 @@
                             <td><?= $no++ ?></td>
 
                             <td>
-                                <span class="code-chip">
-                                    <?= $b['kode_sumber_daya'] ?>
-                                </span>
+                                <span class="code-chip"><?= $b['kode_sumber_daya'] ?></span>
                             </td>
 
                             <td>
                                 <strong><?= ucwords(strtolower($b['nama_material'])) ?></strong><br>
-                                <small class="text-muted">
-                                    <?= $b['satuan'] ?>
-                                </small>
+                                <small class="text-muted"><?= $b['satuan'] ?></small>
                             </td>
 
                             <td class="jenis-cell">
-                                <strong><?= $b['kategori'] ?></strong><br>
-                                <small class="text-muted"><?= $b['jenis_material'] ?></small>
+
+                                <?php if ($b['kategori'] == 'Material'): ?>
+                                    <span class="badge bg-primary">Material</span>
+
+                                <?php elseif ($b['kategori'] == 'Suku Cadang'): ?>
+                                    <span class="badge bg-warning text-dark">Suku Cadang</span>
+
+                                <?php else: ?>
+                                    <span class="badge bg-success">BBM</span>
+                                <?php endif; ?>
+
                             </td>
 
                             <td>
@@ -155,14 +170,10 @@
                                     <span class="badge bg-dark">0</span>
 
                                 <?php elseif ($b['stok'] <= 10): ?>
-                                    <span class="badge bg-danger">
-                                        <?= $b['stok'] ?>
-                                    </span>
+                                    <span class="badge bg-danger"><?= $b['stok'] ?></span>
 
                                 <?php else: ?>
-                                    <span class="badge bg-success">
-                                        <?= $b['stok'] ?>
-                                    </span>
+                                    <span class="badge bg-success"><?= $b['stok'] ?></span>
                                 <?php endif; ?>
 
                             </td>
@@ -170,24 +181,23 @@
                             <td><?= $b['lokasi_gudang'] ?></td>
 
                             <td>
-                                <span class="badge bg-primary">
-                                    <?= $b['status_barang'] ?>
-                                </span>
+                                <span class="badge bg-info text-dark"><?= $b['status_barang'] ?></span>
                             </td>
 
                             <td>
+                                <div class="action-wrap">
 
-                                <a href="<?= base_url('barang/edit/' . $b['id']) ?>"
-                                    class="btn btn-edit btn-sm">
-                                    Edit
-                                </a>
+                                    <a href="<?= base_url('barang/edit/' . $b['id']) ?>" class="btn btn-edit btn-sm">
+                                        Edit
+                                    </a>
 
-                                <a href="<?= base_url('barang/hapus/' . $b['id']) ?>"
-                                    onclick="return confirm('Hapus data ini?')"
-                                    class="btn btn-delete btn-sm">
-                                    Hapus
-                                </a>
+                                    <a href="<?= base_url('barang/hapus/' . $b['id']) ?>"
+                                        onclick="return confirm('Hapus data ini?')"
+                                        class="btn btn-delete btn-sm">
+                                        Hapus
+                                    </a>
 
+                                </div>
                             </td>
 
                         </tr>
@@ -195,25 +205,22 @@
                     <?php endforeach; ?>
 
                 </tbody>
-
             </table>
-
         </div>
 
     </div>
-
 </div>
 
 <style>
     .hero-box {
         background: linear-gradient(135deg, #003366, #005BAC);
-        color: white;
+        color: #fff;
         border-radius: 24px;
         padding: 28px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 20px;
+        gap: 18px;
         flex-wrap: wrap;
         box-shadow: 0 20px 35px rgba(0, 51, 102, .18);
     }
@@ -227,6 +234,7 @@
         font-size: 12px;
         font-weight: 700;
         opacity: .8;
+        letter-spacing: 1px;
     }
 
     .hero-subtitle {
@@ -235,10 +243,11 @@
 
     .mini-card,
     .panel-box {
-        background: white;
+        background: #fff;
         border-radius: 22px;
-        padding: 24px;
+        padding: 22px;
         box-shadow: 0 10px 25px rgba(15, 23, 42, .05);
+        height: 100%;
     }
 
     .mini-card small {
@@ -247,7 +256,7 @@
     }
 
     .mini-card h3 {
-        font-size: 30px;
+        font-size: 28px;
         font-weight: 800;
         margin-top: 8px;
     }
@@ -286,14 +295,13 @@
         background: #f8fafc;
         border: none;
         color: #64748b;
-        position: sticky;
-        top: 0;
-        z-index: 1;
+        font-size: 14px;
     }
 
     .table-enterprise td {
         border-color: #eef2f7;
         vertical-align: middle;
+        font-size: 14px;
     }
 
     .table-enterprise tbody tr:hover {
@@ -325,16 +333,36 @@
         font-weight: 700;
     }
 
+    .action-wrap {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
     @media(max-width:768px) {
 
         .hero-box,
         .mini-card,
         .panel-box {
-            padding: 18px;
+            padding: 16px;
+            border-radius: 18px;
         }
 
         .hero-title {
-            font-size: 24px;
+            font-size: 22px;
+        }
+
+        .btn-main {
+            width: 100%;
+        }
+
+        .action-wrap {
+            flex-direction: column;
+        }
+
+        .btn-edit,
+        .btn-delete {
+            width: 100%;
         }
     }
 </style>
@@ -343,48 +371,34 @@
     const searchInput = document.getElementById("searchInput");
     const filterJenis = document.getElementById("filterJenis");
     const filterStok = document.getElementById("filterStok");
-
     const rows = document.querySelectorAll("#materialTable tbody tr");
     const resultCount = document.getElementById("resultCount");
 
     function getStok(row) {
-        let angka = parseInt(row.children[4].innerText.trim()) || 0;
-        return angka;
+        return parseInt(row.children[4].innerText.trim()) || 0;
     }
 
     function filterTable() {
 
-        let keyword = searchInput.value.toLowerCase().trim();
-        let kategori = filterJenis.value.toLowerCase().trim();
-        let stokMode = filterStok.value.toLowerCase().trim();
+        let keyword = searchInput.value.toLowerCase();
+        let kategori = filterJenis.value.toLowerCase();
+        let stokMode = filterStok.value.toLowerCase();
 
         let visible = 0;
 
         rows.forEach(row => {
 
             let text = row.innerText.toLowerCase();
-
-            let jenis = row.querySelector(".jenis-cell") ?
-                row.querySelector(".jenis-cell").innerText.toLowerCase() :
-                "";
-
             let stok = getStok(row);
 
-            let matchKeyword =
-                keyword === "" || text.includes(keyword);
-
-            let matchJenis =
-                kategori === "" || jenis.includes(kategori);
+            let matchKeyword = keyword == "" || text.includes(keyword);
+            let matchJenis = kategori == "" || text.includes(kategori);
 
             let matchStok = true;
 
-            if (stokMode === "aman") {
-                matchStok = stok > 10;
-            } else if (stokMode === "kritis") {
-                matchStok = stok > 0 && stok <= 10;
-            } else if (stokMode === "habis") {
-                matchStok = stok == 0;
-            }
+            if (stokMode == "aman") matchStok = stok > 10;
+            if (stokMode == "kritis") matchStok = stok > 0 && stok <= 10;
+            if (stokMode == "habis") matchStok = stok == 0;
 
             if (matchKeyword && matchJenis && matchStok) {
                 row.style.display = "";
